@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -17,10 +18,14 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
 
 public class ScheduleFragment extends Fragment {
     private RecyclerView recyclerView;
@@ -28,6 +33,7 @@ public class ScheduleFragment extends Fragment {
     private DatabaseHelper dbHelper;
     private List<Task> taskList;
     private Calendar selectedDateTime;
+    private LinearLayout dateContainer;
 
     @Nullable
     @Override
@@ -40,7 +46,10 @@ public class ScheduleFragment extends Fragment {
         recyclerView = view.findViewById(R.id.recycler_view_tasks);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        loadTasks();
+        dateContainer = view.findViewById(R.id.date_container);
+        setupDateChips();
+
+        loadTasksForSelectedDate();
 
         FloatingActionButton fab = view.findViewById(R.id.fab_add_task);
         fab.setOnClickListener(v -> showAddTaskDialog());
@@ -48,10 +57,80 @@ public class ScheduleFragment extends Fragment {
         return view;
     }
 
-    private void loadTasks() {
-        taskList = dbHelper.getFutureTasks();
-        taskAdapter = new TaskAdapter(getContext(), taskList);
-        recyclerView.setAdapter(taskAdapter);
+    private void setupDateChips() {
+        // Clear existing views
+        dateContainer.removeAllViews();
+
+        // Create chip group for date selection
+        ChipGroup chipGroup = new ChipGroup(requireContext());
+        chipGroup.setSingleSelection(true);
+        chipGroup.setSelectionRequired(true);
+
+        // Format for date chips
+        SimpleDateFormat chipDateFormat = new SimpleDateFormat("EEE, MMM d", Locale.getDefault());
+
+        // Add chips for next 7 days
+        Calendar calendar = Calendar.getInstance();
+        for (int i = 0; i < 7; i++) {
+            Chip chip = new Chip(requireContext());
+
+            // Format date and set special text for today
+            String dateText = i == 0 ?
+                    "Today, " + chipDateFormat.format(calendar.getTime()) :
+                    chipDateFormat.format(calendar.getTime());
+
+            chip.setText(dateText);
+            chip.setCheckable(true);
+            chip.setClickable(true);
+
+            // Store date with chip for reference
+            final Calendar chipDate = (Calendar) calendar.clone();
+            chip.setTag(chipDate);
+
+            // Select first day (today) by default
+            if (i == 0) {
+                chip.setChecked(true);
+            }
+
+            chip.setOnClickListener(v -> {
+                selectedDateTime = (Calendar) chip.getTag();
+                loadTasksForSelectedDate();
+            });
+
+            chipGroup.addView(chip);
+
+            // Move to next day
+            calendar.add(Calendar.DAY_OF_MONTH, 1);
+        }
+
+        dateContainer.addView(chipGroup);
+    }
+
+    private void loadTasksForSelectedDate() {
+        // Get start and end of selected day
+        Calendar startOfDay = (Calendar) selectedDateTime.clone();
+        startOfDay.set(Calendar.HOUR_OF_DAY, 0);
+        startOfDay.set(Calendar.MINUTE, 0);
+        startOfDay.set(Calendar.SECOND, 0);
+
+        Calendar endOfDay = (Calendar) selectedDateTime.clone();
+        endOfDay.set(Calendar.HOUR_OF_DAY, 23);
+        endOfDay.set(Calendar.MINUTE, 59);
+        endOfDay.set(Calendar.SECOND, 59);
+
+        // Get tasks for the selected date range
+        taskList = dbHelper.getTasksByDateRange(
+                startOfDay.getTimeInMillis(),
+                endOfDay.getTimeInMillis()
+        );
+
+        if (taskAdapter == null) {
+            taskAdapter = new TaskAdapter(getContext(), taskList);
+            recyclerView.setAdapter(taskAdapter);
+        } else {
+            // Update existing adapter with new tasks
+            taskAdapter.updateTasks(taskList);
+        }
     }
 
     private void showAddTaskDialog() {
@@ -118,7 +197,7 @@ public class ScheduleFragment extends Fragment {
             long id = dbHelper.addTask(task);
             if (id != -1) {
                 task.setId(id);
-                loadTasks();
+                loadTasksForSelectedDate();
                 dialog.dismiss();
                 Toast.makeText(getContext(), "Task added successfully", Toast.LENGTH_SHORT).show();
             } else {
@@ -132,6 +211,6 @@ public class ScheduleFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        loadTasks();
+        loadTasksForSelectedDate();
     }
 }

@@ -73,6 +73,40 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return db.insert(TaskContract.TaskEntry.TABLE_NAME, null, values);
     }
 
+    public List<Task> getTasksByDateRange(long startTime, long endTime) {
+        List<Task> taskList = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        String selection = TaskContract.TaskEntry.COLUMN_DATETIME + " BETWEEN ? AND ?";
+        String[] selectionArgs = {String.valueOf(startTime), String.valueOf(endTime)};
+        String sortOrder = TaskContract.TaskEntry.COLUMN_DATETIME + " ASC";
+
+        Cursor cursor = db.query(
+                TaskContract.TaskEntry.TABLE_NAME,
+                null,
+                selection,
+                selectionArgs,
+                null,
+                null,
+                sortOrder
+        );
+
+        if (cursor.moveToFirst()) {
+            do {
+                Task task = new Task();
+                task.setId(cursor.getLong(cursor.getColumnIndexOrThrow(TaskContract.TaskEntry._ID)));
+                task.setTitle(cursor.getString(cursor.getColumnIndexOrThrow(TaskContract.TaskEntry.COLUMN_TITLE)));
+                task.setDescription(cursor.getString(cursor.getColumnIndexOrThrow(TaskContract.TaskEntry.COLUMN_DESCRIPTION)));
+                task.setDatetime(cursor.getLong(cursor.getColumnIndexOrThrow(TaskContract.TaskEntry.COLUMN_DATETIME)));
+                task.setStatus(cursor.getString(cursor.getColumnIndexOrThrow(TaskContract.TaskEntry.COLUMN_STATUS)));
+                taskList.add(task);
+            } while (cursor.moveToNext());
+        }
+
+        cursor.close();
+        return taskList;
+    }
+
     public List<Task> getFutureTasks() {
         List<Task> taskList = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
