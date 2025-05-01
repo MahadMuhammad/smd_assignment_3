@@ -1,3 +1,13 @@
 <resources>
-    <string name="app_name">Smd_assignment_3</string>
+<!--    <string name="app_name">Smd_assignment_3</string>-->
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="app_name">Task Manager</string>
+    <string name="schedule_tab">Schedule</string>
+    <string name="past_tab">Past</string>
+    <string name="notification_tab">Notification</string>
+    <string name="profile_tab">Profile</string>
+    <string name="add_task">Add Task</string>
+    <string name="update_profile">Update Profile</string>
+    <string name="dark_mode">Dark Mode</string>
 </resources>
